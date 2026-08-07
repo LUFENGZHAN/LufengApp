@@ -1,0 +1,20 @@
+CREATE TABLE user_account
+(
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+
+    user_no VARCHAR(32) NOT NULL UNIQUE COMMENT '用户编号',
+
+    account VARCHAR(50) NOT NULL UNIQUE COMMENT '登录账号',
+
+    password VARCHAR(255) NOT NULL COMMENT '密码',
+
+    status TINYINT DEFAULT 1 COMMENT '状态 0禁用 1正常',
+
+    last_login_time DATETIME COMMENT '最后登录时间',
+
+    created_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+
+    updated_time DATETIME DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
+
+);

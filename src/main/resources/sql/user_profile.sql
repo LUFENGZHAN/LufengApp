@@ -1,0 +1,20 @@
+CREATE TABLE user_profile
+(
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+
+    user_id BIGINT NOT NULL UNIQUE,
+
+    nickname VARCHAR(50) COMMENT '昵称',
+
+    avatar VARCHAR(255) COMMENT '头像',
+
+    gender TINYINT DEFAULT 0 COMMENT '0未知 1男 2女',
+
+    signature VARCHAR(255) COMMENT '个性签名',
+
+    created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    updated_time DATETIME DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP
+
+);

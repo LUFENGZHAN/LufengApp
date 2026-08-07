@@ -1,3 +1,20 @@
 spring:
   application:
     name: chat
+
+  datasource:
+    username: root
+    password: 123456
+
+
+  jackson:
+    time-zone: Asia/Shanghai
+
+
+server:
+  port: 3001
+
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
