@@ -81,6 +81,12 @@ export const useConversationStore = defineStore('conversation', () => {
     if (currentId.value === conversationId) currentId.value = null
   }
 
+  /** 从「我的会话列表」移除会话：调后端软退出（is_deleted=1），本端不再接收该会话消息，列表消失 */
+  async function deleteConversation(conversationId: number) {
+    await conversationApi.remove(conversationId)
+    remove(conversationId)
+  }
+
   function findByPeer(userId: number) {
     return list.value.find((c) => c.peer?.userId === userId) ?? null
   }
@@ -103,6 +109,7 @@ export const useConversationStore = defineStore('conversation', () => {
     setUnread,
     setCurrent,
     remove,
+    deleteConversation,
     findByPeer,
     clear,
   }
