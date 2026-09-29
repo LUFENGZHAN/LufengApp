@@ -2,7 +2,6 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '4.1.0'
 	id 'io.spring.dependency-management' version '1.1.7'
-	id 'org.graalvm.buildtools.native' version '1.1.1'
 }
 
 group = 'com.study'
@@ -19,25 +18,41 @@ repositories {
 }
 
 dependencies {
-	implementation "org.projectlombok:lombok:1.18.34"
-	// Web接口
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+	testCompileOnly 'org.projectlombok:lombok'
+	testAnnotationProcessor 'org.projectlombok:lombok'
+
+	// Web 接口
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 
-	// WebSocket聊天
+	// WebSocket 聊天
 	implementation 'org.springframework.boot:spring-boot-starter-websocket'
 
 	// 参数校验
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 
-	// Redis
+	// Redis：在线状态 / seq / 幂等 / 限流
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+	// 密码摘要：BCryptPasswordEncoder
+	implementation 'org.springframework.security:spring-security-crypto'
+
+	// JWT
+	implementation 'io.jsonwebtoken:jjwt-api:0.12.7'
+	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.7'
+	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.7'
 
 	// MySQL
 	runtimeOnly 'com.mysql:mysql-connector-j'
 
-	implementation 'org.projectlombok:lombok'
+	// ORM
+	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:4.1.0'
 
-	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
 
-	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.4'
+tasks.named('test') {
+	useJUnitPlatform()
 }

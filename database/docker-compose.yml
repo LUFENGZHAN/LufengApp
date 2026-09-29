@@ -1,0 +1,112 @@
+# -------------------------------------------------------------------
+# LufengApp 基础设施：MySQL 8 + Redis 7
+# 启动：  docker compose up -d
+# 停止：  docker compose down
+# 清库重来：docker compose down -v && docker compose up -d
+# 初始化脚本会自动执行 database/init/*.sql（按文件名字典序）
+# -------------------------------------------------------------------
+services:
+
+  mysql:
+    image: mysql:8.0.36
+    container_name: lufeng-mysql
+    restart: unless-stopped
+    # 宿主机 3306 常被本机/其他容器占用；这里默认映射到 3307，容器内部仍是 3306。
+    # 需要改端口时：MYSQL_HOST_PORT=3306 docker compose up -d
+    ports:
+      - "${MYSQL_HOST_PORT:-3307}:3306"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      # 客户端连接过来时忽略其字符集协商，一律按 utf8mb4 处理，避免中文双重编码
+      - --character-set-client-handshake=FALSE
+      - --default-time-zone=+08:00
+      - --max_connections=500
+      - --innodb_buffer_pool_size=512M
+      - --slow_query_log=ON
+      - --long_query_time=1
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      MYSQL_DATABASE: lufeng_chat
+      MYSQL_USER: lufeng
+      MYSQL_PASSWORD: lufeng123456
+      TZ: Asia/Shanghai
+    volumes:
+      # 初始化脚本（首次创建数据卷时执行）
+      - ./init:/docker-entrypoint-initdb.d:ro
+      # 数据持久化
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks:
+      - lufeng-net
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: lufeng-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    # 在线状态、seq、幂等、限流均依赖 Redis；开启 AOF 避免重启丢未读数
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "512mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks:
+      - lufeng-net
+
+  # 可选：数据库 Web 管理台 http://localhost:8080 （账号 root / root123456）
+  adminer:
+    image: adminer:latest
+    container_name: lufeng-adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - lufeng-net
+
+  # -----------------------------------------------------------------
+  # 后端接入示例（后端可跑通 Dockerfile 后打开注释）：
+  # backend:
+  #   build:
+  #     context: ../backend
+  #     dockerfile: Dockerfile
+  #   container_name: lufeng-backend
+  #   ports:
+  #     - "3001:3001"
+  #   environment:
+  #     SPRING_PROFILES_ACTIVE: docker
+  #     SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/lufeng_chat?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&rewriteBatchedStatements=true
+  #     SPRING_DATASOURCE_USERNAME: lufeng
+  #     SPRING_DATASOURCE_PASSWORD: lufeng123456
+  #     SPRING_DATA_REDIS_HOST: redis
+  #     SPRING_DATA_REDIS_PORT: 6379
+  #     JWT_SECRET: ${JWT_SECRET:-please-change-me-in-production}
+  #   depends_on:
+  #     mysql:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   networks:
+  #     - lufeng-net
+  # -----------------------------------------------------------------
+
+volumes:
+  mysql-data:
+  redis-data:
+
+networks:
+  lufeng-net:
+    driver: bridge
