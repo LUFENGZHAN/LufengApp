@@ -3,14 +3,19 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "LufengApp 在线聊天 Web 前端（Vue 3 + Vite + TypeScript）",
+  "description": "LufengApp 在线聊天（Vue 3 + Vite + TypeScript），可同时打包为 Electron 桌面程序",
+  "author": "Lufeng",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "vue-tsc --noEmit -p tsconfig.app.json"
+    "typecheck": "vue-tsc --noEmit -p tsconfig.app.json",
+    "electron:dev": "npm run build && electron .",
+    "electron:pack": "npm run build && electron-builder --win --dir",
+    "electron:build": "npm run build && electron-builder --win"
   },
-  "dependencies": {
+"dependencies": {
     "axios": "^1.8.4",
     "dayjs": "^1.11.13",
     "pinia": "^3.0.1",
@@ -20,11 +25,58 @@
   "devDependencies": {
     "@types/node": "^22.14.0",
     "@vitejs/plugin-vue": "^5.2.3",
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
     "typescript": "~5.8.3",
     "vite": "^6.2.4",
     "vue-tsc": "^2.2.10"
   },
   "engines": {
     "node": ">=20.19"
+  },
+  "build": {
+    "appId": "com.lufeng.chat",
+    "productName": "麓风聊天",
+    "copyright": "Copyright © 2026 Lufeng",
+    "directories": {
+      "output": "release-app",
+      "buildResources": "build"
+    },
+    "electronDist": "node_modules/electron/dist",
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "build/icon.png",
+      "package.json"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "麓风聊天",
+      "artifactName": "lufeng-chat-setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "lufeng-chat-${version}-portable.${ext}"
+    }
   }
 }

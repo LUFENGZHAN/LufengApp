@@ -8,7 +8,7 @@
 services:
 
   mysql:
-    image: mysql:8.0.36
+    image: mysql:8.0
     container_name: lufeng-mysql
     restart: unless-stopped
     # 宿主机 3306 常被本机/其他容器占用；这里默认映射到 3307，容器内部仍是 3306。

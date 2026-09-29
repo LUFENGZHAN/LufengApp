@@ -18,6 +18,14 @@ const friendStore = useFriendStore()
 const realtime = useRealtimeStore()
 
 /**
+ * 桌面端（Electron）：预加载脚本暴露的标记。
+ * 桌面端界面铺满窗口，不套用网页版「居中悬浮卡片」的 20px 外边距与圆角。
+ */
+const isDesktop = Boolean(
+  (window as unknown as { lufengDesktop?: { isDesktop?: boolean } }).lufengDesktop?.isDesktop,
+)
+
+/**
  * 当前一级 Tab。由路由推导，不用本地状态 —— 否则刷新页面、浏览器前进后退
  * 时会出现「路由在联系人、侧栏高亮在消息」的错位。
  */
@@ -66,7 +74,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="shell">
+  <div class="shell" :class="{ 'is-desktop': isDesktop }">
     <div class="window">
       <aside class="nav">
         <button class="me" title="我的" @click="router.push({ name: 'profile' })">
@@ -232,6 +240,23 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   background: #f8f9fb;
+}
+
+/**
+ * 桌面端（Electron）：去掉「悬浮卡片」的 20px 外边距、渐变底与圆角/边框，
+ * 让界面铺满整个窗口，避免四周出现难看的一圈空白。
+ */
+:global(html.is-desktop) .shell {
+  padding: 0;
+  background: var(--panel);
+}
+
+:global(html.is-desktop) .window {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
 }
 
 @media (max-width: 960px) {

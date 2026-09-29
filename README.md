@@ -18,15 +18,19 @@ LufengApp/
 cd database && docker compose up -d
 docker compose ps            # 等 mysql / redis 都 healthy
 
-# 2. 后端
-cd backend && ./gradlew bootRun --args="--server.port=3001"
+# 2. 后端（推荐 Docker；backend 服务定义在 database/docker-compose.yml，构建上下文 ../backend）
+cd database && docker compose up -d --build backend
 # 健康检查：http://127.0.0.1:3001/api/v1/health
+# 日志：docker compose logs -f backend ｜ 改代码后重建：docker compose up -d --build backend
+# 若想本地裸跑（不用容器）：cd backend && ./gradlew bootRun --args="--server.port=3001"
 
 # 3. Web 前端
-cd web-app && npm install && npm run dev     # http://127.0.0.1:5173
+cd web-app && npm install && npm run dev     # http://127.0.0.1:8888
 # 构建：npm run build（产物 dist/）；类型检查：npm run typecheck
 
-# 4. Android：Android Studio 打开 android-app/
+# 4. 桌面端（Electron，可选）：打包/运行见下「十一、桌面端（Electron）」
+
+# 5. Android：Android Studio 打开 android-app/
 ```
 
 > 后端默认连接 `127.0.0.1:3306/lufeng_chat`（lufeng / lufeng123456）与 `127.0.0.1:6379`，
@@ -173,3 +177,31 @@ SMOKE_BASE=http://127.0.0.1:3001 node database/scripts/ws-smoke.mjs
 - 端到端验证：Docker 拉起 MySQL/Redis 后跑通「注册 → 加好友 → 建会话 → 双端收发」全链路
 
 详见 [`docs/架构改造方案.md`](docs/架构改造方案.md)。
+
+## 十一、桌面端（Electron）
+
+同一份前端代码可直接打包为 Windows 桌面程序（`.exe`），业务代码零改动。详见 [`web-app/README.md`](web-app/README.md#桌面端electron)。
+
+**原理**：Electron 主进程在本地起一个零依赖 HTTP/WS 代理服务（`electron/server.cjs`，监听 `127.0.0.1` 随机端口），静态托管 `dist/` 并把 `/api`、`/static`（HTTP）与 `/ws`（WebSocket 升级）反向代理到后端。渲染进程加载本地页面，因此与后端「同源」，彻底规避浏览器 CORS 与 WS 握手跨域问题。
+
+**运行 / 打包**（在 `web-app/` 下）：
+
+```bash
+npm install
+npm run electron:dev    # 本地调试：先 build 再以 Electron 打开
+npm run electron:pack   # 只生成免解包目录 win-unpacked/
+npm run electron:build  # 生成安装包与免安装 exe（输出 release-app/）
+```
+
+**产物**（`web-app/release-app/`）：
+
+| 文件 | 说明 |
+|---|---|
+| `lufeng-chat-setup-1.0.0.exe` | NSIS 安装包（可选安装目录、建桌面/开始菜单快捷方式） |
+| `lufeng-chat-1.0.0-portable.exe` | 免安装单文件 exe，双击即用 |
+| `win-unpacked/麓风聊天.exe` | 解包目录版，适合二次分发或调试 |
+
+> 桌面端依赖后端进程：使用 exe 前请先确保后端已启动（`database/` 目录 `docker compose up -d --build backend`）。
+>
+> **后端地址可配置**（不写死）：优先级为 环境变量 `LUFENG_BACKEND` → **exe 同目录 `lufeng.config.json`** → `<userData>/lufeng.config.json` → 默认 `http://127.0.0.1:3001`。
+> 打包版首次启动会在 exe 同目录生成配置模板，换域名直接改里面的 `backend` 即可（支持 `https://域名`，`/ws` 会自动走 `wss`），也可带网关前缀如 `https://example.com/chat`。详见 [`web-app/README.md`](web-app/README.md#后端地址配置)。

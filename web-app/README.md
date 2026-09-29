@@ -21,7 +21,7 @@
 ```bash
 cd web-app
 npm install
-npm run dev        # http://127.0.0.1:5173
+npm run dev        # http://127.0.0.1:8888
 npm run build      # 产物 dist/
 npm run typecheck  # vue-tsc 类型检查
 ```
@@ -35,6 +35,77 @@ npm run typecheck  # vue-tsc 类型检查
 > 故障排查：若 `npm run build` 报 `Cannot find module '@rollup/rollup-win32-x64-msvc'` 或
 > `@esbuild/win32-x64 could not be found`，说明 npm 跳过了这两个平台二进制可选包，按本地版本补装即可：
 > `npm i @rollup/rollup-win32-x64-msvc@<rollup版本> @esbuild/win32-x64@<esbuild版本>`（其他平台替换对应的平台后缀）。
+
+## 桌面端（Electron）
+
+同一份前端代码可直接打包为 Windows 桌面程序（exe），无需改动任何业务代码。
+
+### 运行与打包
+
+```bash
+cd web-app
+npm install
+
+npm run electron:dev    # 本地调试：先 build 再以 Electron 打开
+npm run electron:pack   # 只生成免解包目录 release-app/win-unpacked/
+npm run electron:build  # 生成安装包与免安装 exe
+```
+
+产物（`web-app/release-app/`）：
+
+| 文件 | 说明 |
+| --- | --- |
+| `lufeng-chat-setup-1.0.0.exe` | NSIS 安装包（可选安装目录、建桌面/开始菜单快捷方式） |
+| `lufeng-chat-1.0.0-portable.exe` | 免安装单文件 exe，双击即用 |
+| `win-unpacked/麓风聊天.exe` | 解包目录版，适合二次分发或调试 |
+
+### 工作原理
+
+```
+┌───────────────── Electron 主进程 (electron/main.cjs) ─────────────────┐
+│  启动本地服务 (electron/server.cjs)，监听 127.0.0.1 随机端口           │
+│    ├─ 静态托管 dist/ 前端产物                                          │
+│    ├─ /api、/static  ──HTTP 反代──►  后端地址（可配置，见下）          │
+│    └─ /ws           ──WS 升级转发──►  后端地址（可配置，见下）          │
+│                                                       │               │
+│  BrowserWindow ── 加载 http://127.0.0.1:<随机端口> ◄──┘               │
+└───────────────────────────────────────────────────────────────────────┘
+```
+
+渲染进程与后端始终「同源」（都在本地随机端口），因此前端的相对路径 `/api`、
+`ws://<host>/ws`、`/static` 全部无需改动，也不用开 CORS、不怕 WS 握手被拦。
+
+### 后端地址配置
+
+后端地址**不写死在代码里**，按以下优先级解析（先命中先用）：
+
+| 优先级 | 来源 | 说明 |
+| --- | --- | --- |
+| 1 | 环境变量 `LUFENG_BACKEND` | 开发/临时覆盖，如 `LUFENG_BACKEND=http://127.0.0.1:3002 npm run electron:dev` |
+| 2 | **exe 同目录 `lufeng.config.json`** | 换域名就改这里，改完重启程序生效 |
+| 3 | `<userData>/lufeng.config.json` | 安装目录不可写时的兜底位置 |
+| 4 | 内置默认值 `http://127.0.0.1:3001` | 什么都没配时使用 |
+
+打包版**首次启动**会在 exe 同目录自动生成一份带注释的配置模板，直接改 `backend` 即可：
+
+```json
+{
+  "backend": "https://chat.example.com"
+}
+```
+
+- 支持 `http` / `https`；填 `https://` 域名时，HTTP 走 TLS、`/ws` 自动升级为 `wss`（含 SNI）。
+- 也支持带路径前缀的网关地址，如 `https://example.com/chat`，前缀会被原样拼回 `/api`、`/ws` 前。
+- 便携版(portable)的配置放在**便携 exe 所在目录**（不是临时解包目录）。
+
+### 其他说明
+
+- **打包配置**：见 `package.json` 的 `build` 字段；图标资源在 `build/`（`icon.png` / `icon.ico`，
+  可用 `python build/gen-icon.py` 重新生成）。
+- **桌面端标记**：预加载脚本通过 `contextBridge` 暴露 `window.lufengDesktop.isDesktop`；`main.ts` 会据此给
+  `<html>` 加 `is-desktop` 类。`ChatLayout` 在桌面端**去掉网页版「悬浮卡片」的 20px 外边距与圆角**，让界面铺满窗口。
+
+> 桌面端依赖后端进程：使用 exe 前请先确保后端已启动（`database/` 目录 `docker compose up -d --build backend`）。
 
 ## 目录结构
 
