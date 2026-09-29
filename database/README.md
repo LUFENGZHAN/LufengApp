@@ -5,11 +5,37 @@
 ## 启动
 
 ```bash
-docker compose up -d      # 首次启动自动执行 init/*.sql（按文件名字典序）
-docker compose ps         # 等待 mysql / redis 状态为 healthy
-docker compose down       # 停止（保留数据卷）
-docker compose down -v    # 停止并清空数据（下次启动会重新初始化）
+docker compose up -d            # 拉起 mysql + redis + adminer（+ backend，见下方）
+docker compose ps              # 等待各服务状态为 healthy / Up
+docker compose down            # 停止（保留数据卷）
+docker compose down -v         # 停止并清空数据（下次启动会重新初始化）
 ```
+
+### 后端改用 Docker 启动（替代 `./gradlew bootRun`）
+
+后端已容器化，不再需要在本机装 JDK/Gradle。镜像用 `backend/Dockerfile` 多阶段构建
+（Gradle 编译 → JRE 运行），容器内通过服务名 `mysql:3306` / `redis:6379` 访问基础设施，
+宿主机端口仍映射 **3001**（前端 Vite 代理 `http://127.0.0.1:3001` 无需改动）。
+
+```bash
+# 首次或改了后端代码后，必须加 --build 重新打包镜像
+docker compose up -d --build backend
+# 只看后端日志
+docker compose logs -f backend
+# 重启单个服务
+docker compose restart backend
+```
+
+> **切换前先停掉本机旧后端**：如果你之前用 `./gradlew bootRun --args="--server.port=3001"` 起的进程还占着 3001，
+> 直接 `docker compose up -d backend` 会因端口冲突失败。先结束该进程，再起容器。
+> 两者连的是**同一个库**（`lufeng_chat`），数据完全互通，无需重新初始化。
+
+> **JWT 密钥**：生产环境务必注入 `>=32` 字节的密钥，避免容器间 token 互认失效：
+> `JWT_SECRET=<你的密钥> docker compose up -d --build backend`
+> 不传则使用开发默认值（已在 `docker-compose.yml` 中写明）。
+
+> **构建耗时**：首次 `docker compose build` 会拉取 Gradle 分发包 + Maven 依赖（约 1~3 分钟），
+> 后续改源码重建利用 BuildKit 缓存挂载（`/home/gradle/.gradle`），无需重复下载依赖。
 
 > **端口冲突**：宿主机 3306 常常已经被本机 MySQL 服务或其他容器占用。这时 `lufeng-mysql` 会停在 `Created`
 > 状态、或启动后没有任何端口映射（`docker ps` 里 Ports 列只有 `3306/tcp` 而不是 `0.0.0.0:3307->3306/tcp`），

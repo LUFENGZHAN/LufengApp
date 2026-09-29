@@ -78,30 +78,38 @@ services:
       - lufeng-net
 
   # -----------------------------------------------------------------
-  # 后端接入示例（后端可跑通 Dockerfile 后打开注释）：
-  # backend:
-  #   build:
-  #     context: ../backend
-  #     dockerfile: Dockerfile
-  #   container_name: lufeng-backend
-  #   ports:
-  #     - "3001:3001"
-  #   environment:
-  #     SPRING_PROFILES_ACTIVE: docker
-  #     SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/lufeng_chat?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&rewriteBatchedStatements=true
-  #     SPRING_DATASOURCE_USERNAME: lufeng
-  #     SPRING_DATASOURCE_PASSWORD: lufeng123456
-  #     SPRING_DATA_REDIS_HOST: redis
-  #     SPRING_DATA_REDIS_PORT: 6379
-  #     JWT_SECRET: ${JWT_SECRET:-please-change-me-in-production}
-  #   depends_on:
-  #     mysql:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #   networks:
-  #     - lufeng-net
+  # 后端：用 backend/Dockerfile 多阶段构建（Gradle 编译 -> JRE 运行）
+  # 启动：docker compose up -d --build backend
+  # 日志：docker compose logs -f backend
+  # 重建（改代码后）：docker compose up -d --build backend
   # -----------------------------------------------------------------
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    image: lufeng-backend:latest
+    container_name: lufeng-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      # 容器内通过服务名访问基础设施，不再连宿主机 127.0.0.1
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 3001
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/lufeng_chat?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&rewriteBatchedStatements=true
+      SPRING_DATASOURCE_USERNAME: lufeng
+      SPRING_DATASOURCE_PASSWORD: lufeng123456
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      # 生产环境务必用环境变量注入 >=32 字节的密钥：JWT_SECRET=xxx docker compose up -d --build
+      JWT_SECRET: ${JWT_SECRET:-lufeng-dev-secret-please-change-in-production-0123456789}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - lufeng-net
 
 volumes:
   mysql-data:
