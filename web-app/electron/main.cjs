@@ -75,6 +75,19 @@ async function createWindow() {
 
   await mainWindow.loadURL(`http://127.0.0.1:${localServer.port}/`)
 
+  // —— 开发者工具 ——
+  // 不自动打开；开发环境（electron . 直接跑）用 Ctrl+Shift+I 或 F12 以「独立窗口（端外 detach）」
+  // 形式切换开/关；生产环境（打包后的 exe）禁止打开，避免暴露调试能力。
+  mainWindow.webContents.on('before-input-event', (_evt, input) => {
+    if (app.isPackaged) return // 生产环境不开放 DevTools
+    if (input.key === 'F12' || (input.control && input.shift && input.code === 'KeyI')) {
+      const wc = mainWindow?.webContents
+      if (!wc) return
+      if (wc.isDevToolsOpened()) wc.closeDevTools()
+      else wc.openDevTools({ mode: 'detach' })
+    }
+  })
+
   // 外链一律丢给系统浏览器打开，桌面程序内不跳走
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:/i.test(url)) shell.openExternal(url)

@@ -206,6 +206,18 @@ export interface SyncItem {
   afterSeq: number
 }
 
+/* ---------------- 文件上传 ---------------- */
+
+export interface FileUploadResult {
+  /** 形如 /static/2026/09/<uuid>.jpg，前端直接当 src 用（同源回源） */
+  url: string
+  contentType: string
+  size: number
+  width: number | null
+  height: number | null
+  duration: number | null
+}
+
 export interface SyncReq {
   items: SyncItem[]
 }

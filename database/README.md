@@ -5,7 +5,7 @@
 ## 启动
 
 ```bash
-docker compose up -d            # 拉起 mysql + redis + adminer（+ backend，见下方）
+docker compose up -d            # 拉起 mysql + redis（+ backend，见下方）
 docker compose ps              # 等待各服务状态为 healthy / Up
 docker compose down            # 停止（保留数据卷）
 docker compose down -v         # 停止并清空数据（下次启动会重新初始化）
@@ -37,19 +37,18 @@ docker compose restart backend
 > **构建耗时**：首次 `docker compose build` 会拉取 Gradle 分发包 + Maven 依赖（约 1~3 分钟），
 > 后续改源码重建利用 BuildKit 缓存挂载（`/home/gradle/.gradle`），无需重复下载依赖。
 
-> **端口冲突**：宿主机 3306 常常已经被本机 MySQL 服务或其他容器占用。这时 `lufeng-mysql` 会停在 `Created`
-> 状态、或启动后没有任何端口映射（`docker ps` 里 Ports 列只有 `3306/tcp` 而不是 `0.0.0.0:3307->3306/tcp`），
+> **端口冲突**：宿主机 3306 若已被本机 MySQL 服务或其他容器占用。这时 `lufeng-mysql` 会停在 `Created`
+> 状态、或启动后没有任何端口映射（`docker ps` 里 Ports 列只有 `3306/tcp` 而不是 `0.0.0.0:3306->3306/tcp`），
 > 于是后端会连到「别人的库」上，业务接口全部返回 `code=10007 服务异常`。
-> 本模块默认映射到宿主机 **3307**，正是为了避开这个坑。确实想用 3306：
-> `MYSQL_HOST_PORT=3306 docker compose up -d`（需要先停掉占用 3306 的进程/容器）。
+> 本模块默认映射到宿主机 **3306**。若冲突可改用 3307：
+> `MYSQL_HOST_PORT=3307 docker compose up -d`（需要先停掉占用 3306 的进程/容器）。
 
 ## 连接信息
 
 | 服务 | 地址 | 账号 |
 |---|---|---|
-| MySQL 8 | `127.0.0.1:3307` / 库名 `lufeng_chat` | `lufeng / lufeng123456`（业务）、`root / root123456` |
+| MySQL 8 | `127.0.0.1:3306` / 库名 `lufeng_chat` | `lufeng / lufeng123456`（业务）、`root / root123456` |
 | Redis 7 | `127.0.0.1:6379` | 无密码（AOF 已开启） |
-| Adminer | http://localhost:8080 | server 填 `mysql` |
 
 连接自检：
 
@@ -61,7 +60,7 @@ docker exec lufeng-mysql mysql -uroot -proot123456 -N -e "select id,user_no,acco
 后端 JDBC（与 `backend/src/main/resources/application.yml` 默认值一致）：
 
 ```
-jdbc:mysql://127.0.0.1:3307/lufeng_chat?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&rewriteBatchedStatements=true
+jdbc:mysql://127.0.0.1:3306/lufeng_chat?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&rewriteBatchedStatements=true
 ```
 
 > **踩坑**：JDBC 的 `characterEncoding` 只能写 Java 字符集名（`UTF-8`），写 MySQL 的 `utf8mb4` 会抛

@@ -20,6 +20,7 @@ export type IconName =
   | 'trash'
   | 'image'
   | 'spinner'
+  | 'video'
 
 const ICONS: Record<IconName, string> = {
   // 会话气泡
@@ -44,6 +45,7 @@ const ICONS: Record<IconName, string> = {
   image:
     '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/>',
   spinner: '<path d="M21 12a9 9 0 1 1-6.2-8.6"/>',
+  video: '<rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3Z"/>',
 }
 
 const props = withDefaults(defineProps<{ name: IconName; size?: number }>(), { size: 20 })

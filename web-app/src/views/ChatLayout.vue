@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useConversationStore } from '@/stores/conversation'
 import { useFriendStore } from '@/stores/friend'
 import { useRealtimeStore } from '@/stores/realtime'
+import { IS_DESKTOP } from '@/utils/desktop'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,12 +19,10 @@ const friendStore = useFriendStore()
 const realtime = useRealtimeStore()
 
 /**
- * 桌面端（Electron）：预加载脚本暴露的标记。
- * 桌面端界面铺满窗口，不套用网页版「居中悬浮卡片」的 20px 外边距与圆角。
+ * 桌面端（Electron）：界面铺满窗口，不套用网页版「居中悬浮卡片」的
+ * 20px 外边距与圆角。判定逻辑统一放在 utils/desktop.ts。
  */
-const isDesktop = Boolean(
-  (window as unknown as { lufengDesktop?: { isDesktop?: boolean } }).lufengDesktop?.isDesktop,
-)
+const isDesktop = IS_DESKTOP
 
 /**
  * 当前一级 Tab。由路由推导，不用本地状态 —— 否则刷新页面、浏览器前进后退
@@ -245,13 +244,17 @@ onMounted(() => {
 /**
  * 桌面端（Electron）：去掉「悬浮卡片」的 20px 外边距、渐变底与圆角/边框，
  * 让界面铺满整个窗口，避免四周出现难看的一圈空白。
+ *
+ * 注意：这里必须用普通的 scoped 选择器（配合模板上的 is-desktop 类），
+ * 不要写 `:global(html.is-desktop) .shell` —— 该写法在编译后会把后代选择器
+ * 整段丢掉，只剩 `html.is-desktop`，规则落在 <html> 上而完全不生效。
  */
-:global(html.is-desktop) .shell {
+.shell.is-desktop {
   padding: 0;
   background: var(--panel);
 }
 
-:global(html.is-desktop) .window {
+.shell.is-desktop .window {
   width: 100%;
   height: 100%;
   border-radius: 0;

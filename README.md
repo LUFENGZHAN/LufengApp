@@ -14,7 +14,7 @@ LufengApp/
 ## 一、启动顺序
 
 ```bash
-# 1. 数据库层（首次启动自动建表 + 灌演示数据；MySQL 映射宿主机 3307，避开常见的 3306 占用）
+# 1. 数据库层（首次启动自动建表 + 灌演示数据；MySQL 映射宿主机 3306）
 cd database && docker compose up -d
 docker compose ps            # 等 mysql / redis 都 healthy
 
@@ -47,8 +47,8 @@ cd web-app && npm install && npm run dev     # http://127.0.0.1:8888
 | `JWT_ACCESS_TTL` / `JWT_REFRESH_TTL` | `7200s` / `30d` | 凭证有效期 |
 | `WS_CLUSTER_ENABLED` | `false` | 多实例部署时置 true，启用跨节点 WS 投递 |
 | `SERVER_PORT` | `3001` | 服务端口 |
-| `MYSQL_HOST_PORT` | `3307` | MySQL 容器映射到宿主机的端口；宿主机 3306 空闲时可改回 3306 |
-| `SPRING_DATASOURCE_URL` | `jdbc:mysql://127.0.0.1:3307/lufeng_chat?...` | 直接覆盖数据源，优先级最高 |
+| `MYSQL_HOST_PORT` | `3306` | MySQL 容器映射到宿主机的端口；若被本机 MySQL 占用可改为 3307 等 |
+| `SPRING_DATASOURCE_URL` | `jdbc:mysql://127.0.0.1:3306/lufeng_chat?...` | 直接覆盖数据源，优先级最高 |
 
 ## 三、接口速查
 
@@ -88,6 +88,12 @@ cd web-app && npm install && npm run dev     # http://127.0.0.1:8888
 | GET | `/conversations/{id}/messages?cursor&size` | 历史消息游标分页 |
 | POST | `/messages/sync` | 离线补拉（按 lastAckSeq） |
 | POST | `/messages/{msgNo}/recall` | 撤回（2 分钟内） |
+| POST | `/files/upload` | 上传图片/视频（multipart `file` + `category=image\|video`），返回 `/static/...` 相对 URL |
+
+> **发图片/视频**：先 `POST /files/upload` 拿到 URL，再以 `msgType=2`（图片）/ `4`（视频）发送消息，
+> `content` 填该 URL、`extra` 填 JSON 元数据（图片宽高 `w/h`、视频时长 `duration`）。文件落地在
+> `lufeng.storage.dir`（Docker 下为 `/app/uploads`，由 `uploads-data` 卷持久化），经 `/static/**` 同源回源，
+> 前端 Web / Electron 均无需额外配置。图片上限 20MB、视频上限 100MB。
 
 ## 四、WebSocket
 
@@ -165,7 +171,7 @@ SMOKE_BASE=http://127.0.0.1:3001 node database/scripts/ws-smoke.mjs
 | 现象 | 根因 | 处理 |
 |---|---|---|
 | 所有查库接口 10007，`健康检查 200` | JDBC URL 写了 `characterEncoding=utf8mb4` → `Unsupported character encoding 'utf8mb4'` | JDBC 的该参数只能写 Java 字符集名：**`UTF-8`** |
-| 同上，且连接的库是空的/别人的 | 宿主机 3306 被本机 MySQL 或其他容器占用，`lufeng-mysql` 没拿到端口映射，后端连到了别的实例 | `docker ps` 看 Ports 列是否有 `0.0.0.0:3307->3306/tcp`；确认连的是我们的库 |
+| 同上，且连接的库是空的/别人的 | 宿主机 3306 被本机 MySQL 或其他容器占用，`lufeng-mysql` 没拿到端口映射，后端连到了别的实例 | `docker ps` 看 Ports 列是否有 `0.0.0.0:3306->3306/tcp`；确认连的是我们的库 |
 | 中文显示成 `å¼ ä¸‰` | init 脚本执行时会话字符集是 latin1，中文被双重编码 | 每个 `.sql` 文件都要 `SET NAMES utf8mb4;`（各文件是独立会话）；compose 里已加 `--character-set-client-handshake=FALSE` 兜底 |
 | 演示数据灌不进去 | 同上，或 init 只在**首次创建数据卷**时执行 | `docker compose down -v && docker compose up -d` 强制重灌 |
 
@@ -200,6 +206,11 @@ npm run electron:build  # 生成安装包与免安装 exe（输出 release-app/�
 | `lufeng-chat-setup-1.0.0.exe` | NSIS 安装包（可选安装目录、建桌面/开始菜单快捷方式） |
 | `lufeng-chat-1.0.0-portable.exe` | 免安装单文件 exe，双击即用 |
 | `win-unpacked/麓风聊天.exe` | 解包目录版，适合二次分发或调试 |
+
+> 打包默认输出到固定目录 `web-app/release-app/`，重复执行 `npm run electron:build` 会**覆盖**上一次产物，不需要换目录。
+> 若清理旧文件时报 `EBUSY: ... app.asar`（Windows Defender 实时防护正扫描占用上一次产物），**不要把目录改成 release-app2/3…**，
+> 而是把项目目录加入 Defender 排除项一次性解决：以**管理员** PowerShell 执行
+> `Add-MpPreference -ExclusionPath 'E:\GitHub\LufengApp\web-app'`，之后即可稳定覆盖打包。
 
 > 桌面端依赖后端进程：使用 exe 前请先确保后端已启动（`database/` 目录 `docker compose up -d --build backend`）。
 >

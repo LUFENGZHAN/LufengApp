@@ -235,18 +235,21 @@ public class MessageServiceImpl implements MessageService {
     }
 
     private String buildPreview(Message message) {
-        if (message.getContent() == null || message.getContent().isBlank()) {
-            return switch (message.getMsgType() == null ? 1 : message.getMsgType()) {
-                case 2 -> "[图片]";
-                case 3 -> "[语音]";
-                case 4 -> "[视频]";
-                case 5 -> "[文件]";
-                case 6 -> "[位置]";
-                default -> "";
-            };
-        }
-        String content = message.getContent().replaceAll("\\s+", " ").trim();
-        return content.length() > 50 ? content.substring(0, 50) + "…" : content;
+        // 媒体类消息：content 存的是文件 URL，会话列表里只显示类型标签，不暴露链接
+        return switch (message.getMsgType() == null ? 1 : message.getMsgType()) {
+            case 2 -> "[图片]";
+            case 3 -> "[语音]";
+            case 4 -> "[视频]";
+            case 5 -> "[文件]";
+            case 6 -> "[位置]";
+            default -> {
+                if (message.getContent() == null || message.getContent().isBlank()) {
+                    yield "";
+                }
+                String content = message.getContent().replaceAll("\\s+", " ").trim();
+                yield content.length() > 50 ? content.substring(0, 50) + "…" : content;
+            }
+        };
     }
 
     private MessageVO toVO(Message message, boolean duplicated) {

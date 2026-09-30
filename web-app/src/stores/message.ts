@@ -46,6 +46,24 @@ function sortMessages(list: ChatMessage[]): ChatMessage[] {
   return list.sort((a, b) => orderKey(a) - orderKey(b) || (a.sendTime ?? 0) - (b.sendTime ?? 0))
 }
 
+/** 会话列表预览文案：媒体类只显示类型标签，不暴露文件 URL */
+function previewText(msgType: number, content?: string | null): string {
+  switch (msgType) {
+    case 2:
+      return '[图片]'
+    case 3:
+      return '[语音]'
+    case 4:
+      return '[视频]'
+    case 5:
+      return '[文件]'
+    case 6:
+      return '[位置]'
+    default:
+      return content ?? ''
+  }
+}
+
 /** 合并服务端消息：相同 clientMsgId 的本地 sending 版本会被服务端权威数据替换 */
 function merge(existing: ChatMessage[], incoming: ChatMessage[]): ChatMessage[] {
   const map = new Map<string, ChatMessage>()
@@ -216,7 +234,7 @@ export const useMessageStore = defineStore('message', () => {
             seq: ack.seq,
             senderId: local.senderId,
             msgType,
-            preview: trimmed,
+            preview: previewText(msgType, trimmed),
             sendTime: ack.sendTime,
           })
         }
@@ -232,7 +250,7 @@ export const useMessageStore = defineStore('message', () => {
         seq: vo.seq,
         senderId: vo.senderId,
         msgType: vo.msgType,
-        preview: trimmed,
+        preview: previewText(msgType, trimmed),
         sendTime: vo.sendTime,
       })
       return { ok: true }
@@ -488,7 +506,7 @@ export const useMessageStore = defineStore('message', () => {
           seq: latest.seq,
           senderId: latest.senderId,
           msgType: latest.msgType,
-          preview: latest.content ?? '',
+          preview: previewText(latest.msgType, latest.content),
           sendTime: latest.sendTime,
         })
       }

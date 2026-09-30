@@ -5,9 +5,9 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:dev}
 
   datasource:
-    # 默认端口 3307：database/docker-compose.yml 里 MySQL 默认映射到宿主机 3307（3306 常被本机服务占用）。
+    # 默认端口 3306：database/docker-compose.yml 里 MySQL 默认映射到宿主机 3306。
     # 生产或其他端口一律用 SPRING_DATASOURCE_URL 覆盖，不要改这里的默认值。
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://127.0.0.1:3307/lufeng_chat?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&rewriteBatchedStatements=true}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://127.0.0.1:3306/lufeng_chat?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&rewriteBatchedStatements=true}
     username: ${SPRING_DATASOURCE_USERNAME:lufeng}
     password: ${SPRING_DATASOURCE_PASSWORD:lufeng123456}
     hikari:
@@ -26,8 +26,9 @@ spring:
 
   servlet:
     multipart:
-      max-file-size: 10MB
-      max-request-size: 20MB
+      # 图片 20MB / 视频 100MB；单请求上限放宽到 200MB 给视频留余量
+      max-file-size: 100MB
+      max-request-size: 200MB
 
 server:
   port: ${SERVER_PORT:3001}

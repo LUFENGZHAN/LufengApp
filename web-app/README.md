@@ -59,6 +59,11 @@ npm run electron:build  # 生成安装包与免安装 exe
 | `lufeng-chat-1.0.0-portable.exe` | 免安装单文件 exe，双击即用 |
 | `win-unpacked/麓风聊天.exe` | 解包目录版，适合二次分发或调试 |
 
+> 打包默认输出到固定目录 `release-app/`，重复执行 `npm run electron:build` 会**覆盖**上一次产物，不需要换目录。
+> 若清理旧文件时报 `EBUSY: resource busy or locked, unlink ...app.asar`（Windows Defender 实时防护正扫描占用），
+> **不要改成 release-app2/3…**，把项目目录加入 Defender 排除项即可彻底解决：以管理员 PowerShell 执行
+> `Add-MpPreference -ExclusionPath 'E:\GitHub\LufengApp\web-app'`。
+
 ### 工作原理
 
 ```
@@ -102,8 +107,13 @@ npm run electron:build  # 生成安装包与免安装 exe
 
 - **打包配置**：见 `package.json` 的 `build` 字段；图标资源在 `build/`（`icon.png` / `icon.ico`，
   可用 `python build/gen-icon.py` 重新生成）。
-- **桌面端标记**：预加载脚本通过 `contextBridge` 暴露 `window.lufengDesktop.isDesktop`；`main.ts` 会据此给
-  `<html>` 加 `is-desktop` 类。`ChatLayout` 在桌面端**去掉网页版「悬浮卡片」的 20px 外边距与圆角**，让界面铺满窗口。
+- **桌面端标记**：判定逻辑集中在 `src/utils/desktop.ts` —— 优先取预加载脚本注入的
+  `window.lufengDesktop.isDesktop`，兜底判断 `navigator.userAgent` 是否含 `Electron`（预加载失效也能生效）。
+  `main.ts` 据此给 `<html>` 加 `is-desktop` 类，`ChatLayout` 根节点同时挂 `is-desktop` 类。
+  桌面端会去掉网页版「悬浮卡片」的 20px 外边距、圆角与边框，让界面**铺满整个窗口**。
+  > ⚠️ 该覆盖样式必须写成普通 scoped 选择器 `.shell.is-desktop { ... }`。
+  > 曾经写成 `:global(html.is-desktop) .shell`，编译后**后代选择器被整段丢掉**（只剩 `html.is-desktop`），
+  > 规则落到 `<html>` 上，桌面端看起来「改了但完全没生效」——这类组合写法不要用。
 
 > 桌面端依赖后端进程：使用 exe 前请先确保后端已启动（`database/` 目录 `docker compose up -d --build backend`）。
 

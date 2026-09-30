@@ -21,6 +21,16 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/*
+ * 桌面端（Electron）：界面铺满窗口，底色直接沿用面板白，
+ * 并禁掉最外层滚动条，避免四边出现网页版才需要的灰底与滚动条。
+ */
+html.is-desktop,
+html.is-desktop body {
+  background: var(--panel);
+  overflow: hidden;
+}
+
 a {
   color: inherit;
   text-decoration: none;

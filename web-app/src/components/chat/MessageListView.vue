@@ -5,6 +5,8 @@ import { useMessageStore } from '@/stores/message'
 import { useAuthStore } from '@/stores/auth'
 import { useRealtimeStore } from '@/stores/realtime'
 import { shouldSplit, formatDivider } from '@/utils/time'
+import { parseMediaExtra } from '@/utils/media'
+import { MsgType } from '@/api/types'
 import type { ChatMessage } from '@/stores/message'
 
 const props = defineProps<{ conversationId: number; peerId?: number | null }>()
@@ -33,6 +35,29 @@ const rows = computed(() =>
 const peerTyping = computed(() =>
   props.peerId ? realtime.isTyping(props.conversationId, props.peerId) : false,
 )
+
+/** 图片灯箱：点开大图预览 */
+const lightbox = ref<string | null>(null)
+
+/** 图片气泡尺寸：有原始宽高则按比例缩放到约束框内，否则用默认上限 */
+function imgStyle(m: ChatMessage): Record<string, string> {
+  const meta = parseMediaExtra(m.extra)
+  const MAX_W = 240
+  const MAX_H = 320
+  if (!meta.w || !meta.h) return { maxWidth: `${MAX_W}px`, maxHeight: `${MAX_H}px` }
+  const ratio = meta.w / meta.h
+  let w = meta.w
+  let h = meta.h
+  if (w > MAX_W) {
+    w = MAX_W
+    h = Math.round(MAX_W / ratio)
+  }
+  if (h > MAX_H) {
+    h = MAX_H
+    w = Math.round(MAX_H * ratio)
+  }
+  return { width: `${w}px`, height: `${h}px` }
+}
 
 function isMine(m: ChatMessage) {
   return m.senderId === auth.userId
@@ -110,7 +135,26 @@ onMounted(() => scrollToBottom())
             {{ row.message.senderNickname }}
           </span>
           <div class="bubble" :class="{ failed: row.message.failed, sending: row.message.sending }">
-            <span class="content">{{ row.message.content }}</span>
+            <!-- 图片 -->
+            <img
+              v-if="row.message.msgType === MsgType.IMAGE && row.message.content"
+              class="media-img"
+              :src="row.message.content"
+              :style="imgStyle(row.message)"
+              alt="图片"
+              loading="lazy"
+              @click="lightbox = row.message.content"
+            />
+            <!-- 视频 -->
+            <video
+              v-else-if="row.message.msgType === MsgType.VIDEO && row.message.content"
+              class="media-video"
+              :src="row.message.content"
+              controls
+              preload="metadata"
+            ></video>
+            <!-- 文本 -->
+            <span v-else class="content">{{ row.message.content }}</span>
           </div>
           <div v-if="row.message.failed" class="fail-bar">
             <span class="fail-text">发送失败</span>
@@ -128,6 +172,11 @@ onMounted(() => scrollToBottom())
     <div class="typing" v-if="peerTyping">对方正在输入<span class="dots">…</span></div>
 
     <p v-if="messages.length === 0" class="empty">还没有消息，发一条打个招呼吧</p>
+  </div>
+
+  <!-- 图片灯箱 -->
+  <div v-if="lightbox" class="lightbox" @click="lightbox = null">
+    <img :src="lightbox" alt="预览" />
   </div>
 </template>
 
@@ -219,6 +268,47 @@ onMounted(() => scrollToBottom())
 
 .content {
   display: block;
+}
+
+/* 媒体消息：气泡去掉内边距，按内容自适应 */
+.bubble:has(> img),
+.bubble:has(> video) {
+  padding: 4px;
+}
+
+.media-img {
+  display: block;
+  max-width: 240px;
+  max-height: 320px;
+  border-radius: 6px;
+  object-fit: cover;
+  cursor: zoom-in;
+}
+
+.media-video {
+  display: block;
+  max-width: 300px;
+  max-height: 320px;
+  border-radius: 6px;
+  background: #000;
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.78);
+  cursor: zoom-out;
+}
+
+.lightbox img {
+  max-width: 92vw;
+  max-height: 92vh;
+  border-radius: 6px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
 }
 
 .fail-bar {

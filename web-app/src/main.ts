@@ -7,6 +7,7 @@ import { useAuthStore } from './stores/auth'
 import { useRealtimeStore } from './stores/realtime'
 import { useUiStore } from './stores/ui'
 import { ws } from './ws/client'
+import { IS_DESKTOP } from './utils/desktop'
 import { registerNavigator } from './utils/navigator'
 
 const app = createApp(App)
@@ -14,10 +15,10 @@ app.use(createPinia())
 app.use(router)
 
 /**
- * 桌面端（Electron）标记：给 <html> 打上 is-desktop，
+ * 桌面端（Electron）标记：给 <html> 打上 is-desktop。
  * 各视图据此从「网页版居中卡片」切换为「铺满窗口」的原生布局。
  */
-if ((window as unknown as { lufengDesktop?: { isDesktop?: boolean } }).lufengDesktop?.isDesktop) {
+if (IS_DESKTOP) {
   document.documentElement.classList.add('is-desktop')
 }
 
